@@ -1,9 +1,10 @@
 const router = require('express').Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+require('dotenv').config();
 const db = require('knex')(require('../knexfile').development);
 
-const secret = '[)super*totallySECRET(secret_goes-here@]';
+const secret = process.env.TOP_SECRET || 'FOR TESTING';
 
 const servErr = (res, activity) => {
   res.status(500).json({ message: `Something went wrong when ${activity}.` });
