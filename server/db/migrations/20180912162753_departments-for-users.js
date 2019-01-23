@@ -1,11 +1,13 @@
-exports.up = (knex, Promise) => {
-  return knex.schema.createTable('departments-for-users', t => {
-    t.increments();
-    t.integer('user_id').references('users.id').notNullable();
-    t.integer('department_id').references('departments.id').notNullable();
-  });
-};
+const table = 'departments-for-users';
+const refs = [ 'user', 'department' ];
 
-exports.down = (knex, Promise) => {
-  return knex.schema.dropTable('departments-for-users');
-};
+exports.up = knex => (
+  knex.schema.createTable(table, t => {
+    t.increments();
+    for (let ref of refs) {
+      t.integer(`${ref}_id`).references(`${ref}s.id`).notNullable();
+    }
+  })
+);
+
+exports.down = knex => knex.schema.dropTable(table);

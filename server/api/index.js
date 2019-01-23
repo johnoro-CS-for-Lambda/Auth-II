@@ -5,6 +5,10 @@ const db = require('knex')(require('../knexfile').development);
 
 const secret = '[)super*totallySECRET(secret_goes-here@]';
 
+const servErr = (res, activity) => {
+  res.status(500).json({ message: `Something went wrong when ${activity}.` });
+};
+
 const generateToken = ({ id, name }) => {
   const payload = { id, name };
   const options = {
@@ -18,7 +22,7 @@ const generateToken = ({ id, name }) => {
 const protect = (req, res, next) => {
   const token = req.headers.auth;
   if (token) {
-    jwt.verify(token, secret, (err, decoded) => {
+    jwt.verify(token, secret, (err, _) => {
       if (err) { res.status(401).json({ message: 'You shall not pass!' }); }
       else next();
     });
@@ -36,15 +40,13 @@ router.post('/register', (req, res) => {
   }
   pass = bcrypt.hashSync(pass, 10);
   db('users').insert({ name, pass })
-    .then(id => {
-      id = id[0];
+    .then(([ id ]) => {
       if (department) {
         db('departments').where({ department }).first()
           .then(dept => {
             if (!dept || dept.length === 0) {
               db('departments').insert({ department })
-                .then(deptId => {
-                  deptId = deptId[0];
+                .then(([ deptId ]) => {
                   db('departments-for-users')
                     .insert({ department_id: deptId, user_id: id })
                     .catch(err => console.log(err));
@@ -60,7 +62,7 @@ router.post('/register', (req, res) => {
       const token = generateToken({ id, name });
       res.status(201).json({ id, token });
     })
-    .catch(err => res.status(500).json({ error: 'Something went wrong when registering.' }));
+    .catch(servErr(res, 'registering'));
 });
 
 router.post('/login', (req, res) => {
@@ -76,21 +78,21 @@ router.post('/login', (req, res) => {
       const token = generateToken(user);
       res.status(200).json({ token });
     })
-    .catch(err => res.status(500).json({ error: 'Something went wrong when logging in.' }));
+    .catch(servErr(res, 'logging in'));
 });
 
 router.get('/restricted', (req, res) => {
   db('users').where({ id: req.session.userId }).first()
-    .then(user => {
-      res.status(200).json({ message: `You, ${user.name}, have access!` });
+    .then(({ name }) => {
+      res.status(200).json({ message: `You, ${name}, have access!` });
     })
-    .catch(err => res.status(500).json({ error: err }));
+    .catch(error => res.status(500).json({ error }));
 });
 
-router.get('/restricted/users', (req, res) => {
+router.get('/restricted/users', (_, res) => {
   db('users')
     .then(users => res.status(200).json(users))
-    .catch(err => res.status(500).json({ error: 'Something went wrong fetching the users.' }));
+    .catch(servErr(res, 'fetching the users'));
 });
 
 module.exports = router;
